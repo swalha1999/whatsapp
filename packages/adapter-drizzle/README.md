@@ -4,20 +4,17 @@ Drizzle ORM adapter for tracking WhatsApp messages in PostgreSQL.
 
 ## Features
 
-- Pre-built PostgreSQL schema for message tracking
-- Track message delivery status using timestamps (null = not happened)
+- Track both **incoming** and **outgoing** messages
+- Store message content, media, and metadata
+- Track delivery status using timestamps (null = not happened)
 - Track user responses (approved/declined for RSVP-style templates)
-- Indexed for fast lookups by message ID, contact ID, or phone number
+- Query conversation history by phone number
 - Full TypeScript support
 
 ## Installation
 
 ```bash
-# Using pnpm
 pnpm add @swalha1999/whatsapp-adapter-drizzle drizzle-orm
-
-# Using npm
-npm install @swalha1999/whatsapp-adapter-drizzle drizzle-orm
 ```
 
 ## Quick Start
@@ -34,7 +31,7 @@ export const db = drizzle(client)
 
 ### 2. Add Schema to Your Project
 
-Copy the schema into your Drizzle schema file:
+**Copy the schema into your Drizzle schema file:**
 
 ```typescript
 // drizzle/schema.ts (or your schema file)
@@ -45,6 +42,7 @@ import {
   timestamp,
   integer,
   index,
+  text,
 } from 'drizzle-orm/pg-core'
 
 export const whatsappMessages = pgTable(
@@ -54,10 +52,25 @@ export const whatsappMessages = pgTable(
     messageId: varchar('message_id', { length: 255 }),
     contactId: integer('contact_id'),
     phone: varchar('phone', { length: 20 }),
-    templateName: varchar('template_name', { length: 100 }),
-    messageContent: varchar('message_content', { length: 1000 }),
 
-    // Status timestamps (null = not happened, set = happened)
+    // Message direction: 'incoming' or 'outgoing'
+    direction: varchar('direction', { length: 10 }).$type<'incoming' | 'outgoing'>(),
+
+    // Message content
+    messageType: varchar('message_type', { length: 20 }), // text, image, audio, video, document, location, button, interactive
+    messageContent: text('message_content'),
+    mediaId: varchar('media_id', { length: 255 }),
+    mediaUrl: varchar('media_url', { length: 1000 }),
+    mediaMimeType: varchar('media_mime_type', { length: 100 }),
+
+    // For outgoing template messages
+    templateName: varchar('template_name', { length: 100 }),
+
+    // For incoming interactive/button replies
+    replyToMessageId: varchar('reply_to_message_id', { length: 255 }),
+    buttonPayload: varchar('button_payload', { length: 255 }),
+
+    // Status timestamps for outgoing messages (null = not happened, set = happened)
     sentAt: timestamp('sent_at'),
     deliveredAt: timestamp('delivered_at'),
     readAt: timestamp('read_at'),
@@ -67,6 +80,9 @@ export const whatsappMessages = pgTable(
     approvedAt: timestamp('approved_at'),
     declinedAt: timestamp('declined_at'),
 
+    // For incoming messages
+    receivedAt: timestamp('received_at'),
+
     // Record timestamps
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
@@ -75,6 +91,7 @@ export const whatsappMessages = pgTable(
     messageIdIdx: index('message_id_idx').on(table.messageId),
     contactIdIdx: index('contact_id_idx').on(table.contactId),
     phoneIdx: index('phone_idx').on(table.phone),
+    directionIdx: index('direction_idx').on(table.direction),
   })
 )
 
@@ -89,37 +106,6 @@ pnpm drizzle-kit generate
 pnpm drizzle-kit migrate
 ```
 
-Or create the table manually with SQL:
-
-```sql
-CREATE TABLE whatsapp_messages (
-  id SERIAL PRIMARY KEY,
-  message_id VARCHAR(255),
-  contact_id INTEGER,
-  phone VARCHAR(20),
-  template_name VARCHAR(100),
-  message_content VARCHAR(1000),
-
-  -- Status timestamps (null = not happened, set = happened)
-  sent_at TIMESTAMP,
-  delivered_at TIMESTAMP,
-  read_at TIMESTAMP,
-  failed_at TIMESTAMP,
-
-  -- Response timestamps
-  approved_at TIMESTAMP,
-  declined_at TIMESTAMP,
-
-  -- Record timestamps
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX message_id_idx ON whatsapp_messages(message_id);
-CREATE INDEX contact_id_idx ON whatsapp_messages(contact_id);
-CREATE INDEX phone_idx ON whatsapp_messages(phone);
-```
-
 ### 3. Create Adapter
 
 ```typescript
@@ -129,44 +115,48 @@ import { db } from './db'
 const adapter = createDrizzleAdapter(db)
 ```
 
+---
+
 ## API Reference
 
-### `createDrizzleAdapter(db)`
+### `adapter.saveOutgoingMessage(params)`
 
-Creates an adapter instance.
-
-```typescript
-import { createDrizzleAdapter } from '@swalha1999/whatsapp-adapter-drizzle'
-
-const adapter = createDrizzleAdapter(db)
-```
-
-### `adapter.createMessage(data)`
-
-Create a new message record.
+Save an outgoing message (message you sent).
 
 ```typescript
-const message = await adapter.createMessage({
+const message = await adapter.saveOutgoingMessage({
   messageId: 'wamid.xxx',
   phone: '1234567890',
-  contactId: 123,                    // optional
-  templateName: 'order_confirmation', // optional
-  messageContent: 'Hello!',          // optional
-  sentAt: new Date(),                // optional: mark as sent immediately
+  messageContent: 'Hello!',
+  messageType: 'text',              // optional, defaults to 'text'
+  contactId: 123,                   // optional
+  templateName: 'order_update',     // optional, for template messages
+  mediaId: 'media_id',              // optional, for media messages
+  mediaUrl: 'https://...',          // optional
+  mediaMimeType: 'image/jpeg',      // optional
 })
 
-// Returns the created record
-{
-  id: 1,
+// Returns: { direction: 'outgoing', sentAt: Date, ... }
+```
+
+### `adapter.saveIncomingMessage(params)`
+
+Save an incoming message (message you received).
+
+```typescript
+const message = await adapter.saveIncomingMessage({
   messageId: 'wamid.xxx',
   phone: '1234567890',
-  sentAt: Date,        // set = sent
-  deliveredAt: null,   // null = not delivered yet
-  readAt: null,        // null = not read yet
-  failedAt: null,      // null = not failed
-  createdAt: Date,
-  ...
-}
+  messageType: 'text',
+  messageContent: 'Hi there!',
+  contactId: 123,                   // optional
+  mediaId: 'media_id',              // optional
+  mediaMimeType: 'image/jpeg',      // optional
+  replyToMessageId: 'wamid.yyy',    // optional, if replying to a message
+  buttonPayload: 'confirm',         // optional, for button/interactive replies
+})
+
+// Returns: { direction: 'incoming', receivedAt: Date, ... }
 ```
 
 ### `adapter.findByMessageId(messageId)`
@@ -177,42 +167,40 @@ Find a message by its WhatsApp message ID.
 const message = await adapter.findByMessageId('wamid.xxx')
 
 if (message) {
-  // Check status using timestamps
-  const isDelivered = message.deliveredAt !== null
-  const isRead = message.readAt !== null
-  const hasFailed = message.failedAt !== null
+  console.log(`Direction: ${message.direction}`)
+  console.log(`Content: ${message.messageContent}`)
+}
+```
 
-  console.log(`Delivered: ${isDelivered}, Read: ${isRead}`)
+### `adapter.findConversation(phone, limit?)`
+
+Get conversation history with a phone number (both incoming and outgoing).
+
+```typescript
+const messages = await adapter.findConversation('1234567890', 50)
+
+for (const msg of messages) {
+  const prefix = msg.direction === 'incoming' ? '←' : '→'
+  console.log(`${prefix} ${msg.messageContent}`)
 }
 ```
 
 ### `adapter.updateStatus(messageId, status)`
 
-Update message delivery status. Sets the corresponding timestamp to now.
+Update delivery status for outgoing messages.
 
 ```typescript
-// Mark as sent (sets sentAt)
-await adapter.updateStatus('wamid.xxx', 'sent')
-
-// Mark as delivered (sets deliveredAt)
 await adapter.updateStatus('wamid.xxx', 'delivered')
-
-// Mark as read (sets readAt)
 await adapter.updateStatus('wamid.xxx', 'read')
-
-// Mark as failed (sets failedAt)
 await adapter.updateStatus('wamid.xxx', 'failed')
 ```
 
 ### `adapter.updateResponse(messageId, response)`
 
-Update user response. Sets the corresponding timestamp to now.
+Update user response for RSVP-style messages.
 
 ```typescript
-// User approved (sets approvedAt)
 await adapter.updateResponse('wamid.xxx', 'approved')
-
-// User declined (sets declinedAt)
 await adapter.updateResponse('wamid.xxx', 'declined')
 ```
 
@@ -232,74 +220,98 @@ const whatsapp = createWhatsApp({
 
 const adapter = createDrizzleAdapter(db)
 
-// Send and track a message
-async function sendTrackedMessage(phone: string, body: string) {
+// Send and track an outgoing message
+async function sendMessage(phone: string, body: string) {
   const result = await whatsapp.sendText({ to: phone, body })
 
   if (result.success) {
-    await adapter.createMessage({
+    await adapter.saveOutgoingMessage({
       messageId: result.messageId,
       phone,
+      messageType: 'text',
       messageContent: body,
-      sentAt: new Date(), // Mark as sent immediately
     })
   }
 
   return result
 }
 
-// Handle webhook for status updates
+// Handle webhook for incoming messages and status updates
 async function handleWebhook(payload: any) {
   const events = parseWebhookPayload(payload)
 
   for (const event of events) {
-    if (event.type === 'status' && event.status) {
-      const { messageId, status } = event.status
-      await adapter.updateStatus(messageId, status)
-    }
-
+    // Save incoming messages
     if (event.type === 'message' && event.message) {
-      const { content } = event.message
+      const { id, from, content } = event.message
 
-      // Handle quick reply responses
-      if (content.type === 'interactive' || content.type === 'button') {
-        const payload = content.type === 'button'
-          ? content.payload
-          : content.replyId
+      await adapter.saveIncomingMessage({
+        messageId: id,
+        phone: from,
+        messageType: content.type,
+        messageContent: content.type === 'text' ? content.body : undefined,
+        mediaId: content.type === 'media' ? content.mediaId : undefined,
+        mediaMimeType: content.type === 'media' ? content.mimeType : undefined,
+        buttonPayload: content.type === 'button' ? content.payload :
+                       content.type === 'interactive' ? content.replyId : undefined,
+      })
+
+      // Handle RSVP responses
+      if (content.type === 'button' || content.type === 'interactive') {
+        const payload = content.type === 'button' ? content.payload : content.replyId
 
         if (payload === 'yes' || payload === 'confirm') {
-          await adapter.updateResponse(messageId, 'approved')
-        } else if (payload === 'no' || payload === 'cancel') {
-          await adapter.updateResponse(messageId, 'declined')
+          // Find the original outgoing message and mark as approved
+          // (implement your own logic to link responses to original messages)
         }
       }
     }
+
+    // Update delivery status for outgoing messages
+    if (event.type === 'status' && event.status) {
+      await adapter.updateStatus(event.status.messageId, event.status.status)
+    }
   }
+}
+
+// Get conversation history
+async function getConversation(phone: string) {
+  const messages = await adapter.findConversation(phone, 100)
+
+  return messages.map(msg => ({
+    direction: msg.direction,
+    content: msg.messageContent,
+    timestamp: msg.direction === 'incoming' ? msg.receivedAt : msg.sentAt,
+  }))
 }
 ```
 
 ---
 
-## Schema
-
-The `whatsappMessages` table uses **timestamps as the source of truth**:
-- If a timestamp is `null`, the event hasn't happened
-- If a timestamp is set, the event happened at that time
+## Schema Reference
 
 | Column | Type | Description |
 |--------|------|-------------|
 | `id` | SERIAL | Primary key |
 | `messageId` | VARCHAR(255) | WhatsApp message ID |
 | `contactId` | INTEGER | Optional contact reference |
-| `phone` | VARCHAR(20) | Recipient phone number |
-| `templateName` | VARCHAR(100) | Template name if used |
-| `messageContent` | VARCHAR(1000) | Message content |
-| `sentAt` | TIMESTAMP | When message was sent (null = not sent) |
-| `deliveredAt` | TIMESTAMP | When delivered (null = not delivered) |
-| `readAt` | TIMESTAMP | When read (null = not read) |
-| `failedAt` | TIMESTAMP | When failed (null = not failed) |
-| `approvedAt` | TIMESTAMP | When user approved (null = not approved) |
-| `declinedAt` | TIMESTAMP | When user declined (null = not declined) |
+| `phone` | VARCHAR(20) | Phone number |
+| `direction` | VARCHAR(10) | `'incoming'` or `'outgoing'` |
+| `messageType` | VARCHAR(20) | text, image, audio, video, etc. |
+| `messageContent` | TEXT | Message text content |
+| `mediaId` | VARCHAR(255) | WhatsApp media ID |
+| `mediaUrl` | VARCHAR(1000) | Media URL (for outgoing) |
+| `mediaMimeType` | VARCHAR(100) | Media MIME type |
+| `templateName` | VARCHAR(100) | Template name (outgoing) |
+| `replyToMessageId` | VARCHAR(255) | Original message ID (for replies) |
+| `buttonPayload` | VARCHAR(255) | Button/interactive payload |
+| `sentAt` | TIMESTAMP | When sent (outgoing) |
+| `deliveredAt` | TIMESTAMP | When delivered (outgoing) |
+| `readAt` | TIMESTAMP | When read (outgoing) |
+| `failedAt` | TIMESTAMP | When failed (outgoing) |
+| `approvedAt` | TIMESTAMP | When approved (RSVP) |
+| `declinedAt` | TIMESTAMP | When declined (RSVP) |
+| `receivedAt` | TIMESTAMP | When received (incoming) |
 | `createdAt` | TIMESTAMP | Record created |
 | `updatedAt` | TIMESTAMP | Record updated |
 
@@ -308,32 +320,7 @@ The `whatsappMessages` table uses **timestamps as the source of truth**:
 - `message_id_idx` - Fast lookup by WhatsApp message ID
 - `contact_id_idx` - Fast lookup by contact ID
 - `phone_idx` - Fast lookup by phone number
-
----
-
-## Types
-
-```typescript
-import type {
-  WhatsAppMessage,
-  NewWhatsAppMessage
-} from '@swalha1999/whatsapp-adapter-drizzle'
-
-// Select type (all fields)
-const message: WhatsAppMessage = await adapter.findByMessageId('...')
-
-// Check status via timestamps
-if (message.deliveredAt) {
-  console.log(`Delivered at: ${message.deliveredAt}`)
-}
-
-// Insert type (required + optional fields)
-const newMessage: NewWhatsAppMessage = {
-  messageId: 'wamid.xxx',
-  phone: '1234567890',
-  sentAt: new Date(), // optional: mark as sent on creation
-}
-```
+- `direction_idx` - Filter by incoming/outgoing
 
 ---
 
