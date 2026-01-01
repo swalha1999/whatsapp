@@ -12,8 +12,11 @@ export type MessageType =
   | 'video'
   | 'location'
   | 'contacts'
+  | 'reaction'
 
 export type StatusType = 'delivered' | 'failed' | 'read' | 'sent'
+
+export type MessageCategory = 'marketing' | 'utility' | 'authentication' | 'service'
 
 // Webhook payload structure
 export interface WebhookPayload {
@@ -60,14 +63,23 @@ export interface IncomingMessage {
   image?: MediaContent
   audio?: MediaContent
   video?: MediaContent
-  document?: MediaContent
+  document?: MediaContent & { filename?: string }
+  sticker?: MediaContent & { animated?: boolean }
   location?: LocationContent
+  reaction?: ReactionContent
+  contacts?: ContactContent[]
+  context?: MessageContext
+}
+
+export interface MessageContext {
+  from?: string
+  id?: string
 }
 
 export interface InteractiveReply {
   type: 'button_reply' | 'list_reply'
   button_reply?: { id: string; title: string }
-  list_reply?: { id: string; title: string }
+  list_reply?: { id: string; title: string; description?: string }
 }
 
 export interface MediaContent {
@@ -84,12 +96,42 @@ export interface LocationContent {
   address?: string
 }
 
+export interface ReactionContent {
+  message_id: string
+  emoji: string
+}
+
+export interface ContactContent {
+  name: {
+    formatted_name: string
+    first_name?: string
+    last_name?: string
+  }
+  phones?: Array<{ phone: string; type?: string }>
+}
+
 export interface StatusUpdate {
   id: string
   status: StatusType
   timestamp: string
   recipient_id: string
+  conversation?: ConversationInfo
+  pricing?: PricingInfo
   errors?: StatusError[]
+}
+
+export interface ConversationInfo {
+  id: string
+  origin: {
+    type: 'user_initiated' | 'business_initiated' | 'referral_conversion'
+  }
+  expiration_timestamp?: string
+}
+
+export interface PricingInfo {
+  billable: boolean
+  pricing_model: string
+  category: MessageCategory
 }
 
 export interface StatusError {
@@ -118,6 +160,93 @@ export interface SendTemplateParams {
   templateName: string
   languageCode: string
   components?: TemplateComponent[]
+}
+
+export interface SendImageParams {
+  to: string
+  image: { link: string } | { id: string }
+  caption?: string
+}
+
+export interface SendVideoParams {
+  to: string
+  video: { link: string } | { id: string }
+  caption?: string
+}
+
+export interface SendAudioParams {
+  to: string
+  audio: { link: string } | { id: string }
+}
+
+export interface SendDocumentParams {
+  to: string
+  document: { link: string } | { id: string }
+  filename?: string
+  caption?: string
+}
+
+export interface SendStickerParams {
+  to: string
+  sticker: { link: string } | { id: string }
+}
+
+export interface SendLocationParams {
+  to: string
+  latitude: number
+  longitude: number
+  name?: string
+  address?: string
+}
+
+export interface SendReactionParams {
+  to: string
+  messageId: string
+  emoji: string
+}
+
+export interface SendContactsParams {
+  to: string
+  contacts: Array<{
+    name: {
+      formatted_name: string
+      first_name?: string
+      last_name?: string
+    }
+    phones?: Array<{ phone: string; type?: string }>
+  }>
+}
+
+export interface InteractiveButton {
+  type: 'reply'
+  reply: {
+    id: string
+    title: string
+  }
+}
+
+export interface SendInteractiveButtonsParams {
+  to: string
+  body: string
+  buttons: Array<{ id: string; title: string }>
+  header?: { type: 'text'; text: string } | { type: 'image'; image: { link: string } }
+  footer?: string
+}
+
+export interface SendInteractiveListParams {
+  to: string
+  body: string
+  buttonText: string
+  sections: Array<{
+    title?: string
+    rows: Array<{
+      id: string
+      title: string
+      description?: string
+    }>
+  }>
+  header?: string
+  footer?: string
 }
 
 export interface TemplateComponent {

@@ -5,5 +5,7 @@ export type {
   ParsedWebhook,
   ParsedMessage,
   ParsedStatus,
+  ParsedContact,
+  ParsedContactCard,
   MessageContent,
 } from './types'

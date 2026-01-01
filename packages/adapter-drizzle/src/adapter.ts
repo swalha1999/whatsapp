@@ -1,18 +1,33 @@
-import { eq, and, desc } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { whatsappMessages } from './schema'
 import type { WhatsAppMessage, NewWhatsAppMessage } from './schema'
+
+export type MessageCategory = 'marketing' | 'utility' | 'authentication' | 'service'
+export type ConversationOrigin = 'user_initiated' | 'business_initiated' | 'referral_conversion'
 
 export interface SaveOutgoingMessageParams {
   messageId: string
   phone: string
   contactId?: number
+  category?: MessageCategory
   messageType?: string
   messageContent?: string
   templateName?: string
+  // Media
   mediaId?: string
   mediaUrl?: string
   mediaMimeType?: string
+  mediaCaption?: string
+  mediaFilename?: string
+  // Location
+  locationLatitude?: number
+  locationLongitude?: number
+  locationName?: string
+  locationAddress?: string
+  // Interactive
+  interactiveType?: string
+  interactiveData?: string
 }
 
 export interface SaveIncomingMessageParams {
@@ -21,10 +36,27 @@ export interface SaveIncomingMessageParams {
   contactId?: number
   messageType: string
   messageContent?: string
+  // Contact info
+  contactName?: string
+  contactWaId?: string
+  // Media
   mediaId?: string
   mediaMimeType?: string
+  mediaCaption?: string
+  mediaFilename?: string
+  // Location
+  locationLatitude?: number
+  locationLongitude?: number
+  locationName?: string
+  locationAddress?: string
+  // Reply context
   replyToMessageId?: string
   buttonPayload?: string
+  // Reaction
+  reaction?: string
+  reactedToMessageId?: string
+  // Sticker
+  stickerId?: string
 }
 
 export interface WhatsAppAdapter {
@@ -46,6 +78,21 @@ export interface WhatsAppAdapter {
   updateResponse(
     messageId: string,
     response: 'approved' | 'declined'
+  ): Promise<void>
+
+  // Update error
+  updateError(
+    messageId: string,
+    errorCode: number,
+    errorMessage: string
+  ): Promise<void>
+
+  // Update conversation info
+  updateConversation(
+    messageId: string,
+    conversationId: string,
+    origin: ConversationOrigin,
+    expiresAt?: Date
   ): Promise<void>
 }
 
@@ -81,12 +128,21 @@ export function createDrizzleAdapter(
           phone: params.phone,
           contactId: params.contactId,
           direction: 'outgoing',
+          category: params.category,
           messageType: params.messageType ?? 'text',
           messageContent: params.messageContent,
           templateName: params.templateName,
           mediaId: params.mediaId,
           mediaUrl: params.mediaUrl,
           mediaMimeType: params.mediaMimeType,
+          mediaCaption: params.mediaCaption,
+          mediaFilename: params.mediaFilename,
+          locationLatitude: params.locationLatitude,
+          locationLongitude: params.locationLongitude,
+          locationName: params.locationName,
+          locationAddress: params.locationAddress,
+          interactiveType: params.interactiveType,
+          interactiveData: params.interactiveData,
           sentAt: new Date(),
         })
         .returning()
@@ -103,10 +159,21 @@ export function createDrizzleAdapter(
           direction: 'incoming',
           messageType: params.messageType,
           messageContent: params.messageContent,
+          contactName: params.contactName,
+          contactWaId: params.contactWaId,
           mediaId: params.mediaId,
           mediaMimeType: params.mediaMimeType,
+          mediaCaption: params.mediaCaption,
+          mediaFilename: params.mediaFilename,
+          locationLatitude: params.locationLatitude,
+          locationLongitude: params.locationLongitude,
+          locationName: params.locationName,
+          locationAddress: params.locationAddress,
           replyToMessageId: params.replyToMessageId,
           buttonPayload: params.buttonPayload,
+          reaction: params.reaction,
+          reactedToMessageId: params.reactedToMessageId,
+          stickerId: params.stickerId,
           receivedAt: new Date(),
         })
         .returning()
@@ -157,6 +224,30 @@ export function createDrizzleAdapter(
         .update(whatsappMessages)
         .set({
           [column]: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(whatsappMessages.messageId, messageId))
+    },
+
+    async updateError(messageId, errorCode, errorMessage) {
+      await db
+        .update(whatsappMessages)
+        .set({
+          errorCode,
+          errorMessage,
+          failedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(whatsappMessages.messageId, messageId))
+    },
+
+    async updateConversation(messageId, conversationId, origin, expiresAt) {
+      await db
+        .update(whatsappMessages)
+        .set({
+          conversationId,
+          conversationOrigin: origin,
+          conversationExpiresAt: expiresAt,
           updatedAt: new Date(),
         })
         .where(eq(whatsappMessages.messageId, messageId))
