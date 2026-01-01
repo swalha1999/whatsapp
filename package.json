@@ -6,9 +6,20 @@
     "build": "turbo build",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "release": "turbo build && changeset publish",
+    "release:patch": "pnpm version:patch && pnpm build && pnpm -r publish --access public",
+    "release:minor": "pnpm version:minor && pnpm build && pnpm -r publish --access public",
+    "release:major": "pnpm version:major && pnpm build && pnpm -r publish --access public",
+    "publish-packages": "pnpm build && pnpm -r publish --access public",
+    "version:patch": "pnpm -r --filter './packages/*' exec npm version patch --no-git-tag-version",
+    "version:minor": "pnpm -r --filter './packages/*' exec npm version minor --no-git-tag-version",
+    "version:major": "pnpm -r --filter './packages/*' exec npm version major --no-git-tag-version"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.27.0",
     "turbo": "^2.0.0",
     "typescript": "^5.5.0"
   },
