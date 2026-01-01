@@ -1,6 +1,6 @@
 {
   "name": "@swalha1999/whatsapp-adapter-drizzle",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Drizzle adapter for @swalha1999/whatsapp message tracking",
   "author": "swalha1999",
   "license": "MIT",
@@ -12,7 +12,10 @@
   "publishConfig": {
     "access": "public"
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -41,5 +44,10 @@
     "tsdown": "^0.9.5",
     "typescript": "^5.5.0"
   },
-  "keywords": ["whatsapp", "drizzle", "adapter", "database"]
+  "keywords": [
+    "whatsapp",
+    "drizzle",
+    "adapter",
+    "database"
+  ]
 }
