@@ -5,6 +5,7 @@ export type { WhatsApp } from './create-whatsapp'
 // Core types
 export type {
   WhatsAppConfig,
+  ErrorContext,
   SendTextParams,
   SendTemplateParams,
   SendImageParams,

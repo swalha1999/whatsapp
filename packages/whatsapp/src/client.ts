@@ -13,9 +13,10 @@ import type {
   SendInteractiveButtonsParams,
   SendInteractiveListParams,
   SendResult,
+  ErrorContext,
 } from './types'
 
-interface ResolvedConfig extends WhatsAppConfig {
+export interface ResolvedConfig extends WhatsAppConfig {
   apiVersion: string
   baseUrl: string
 }
@@ -55,9 +56,15 @@ export class WhatsAppError extends Error {
   }
 }
 
-async function sendMessage<T>(
+interface SendMessageBody {
+  to: string
+  type: string
+  [key: string]: unknown
+}
+
+async function sendMessage(
   config: ResolvedConfig,
-  body: object
+  body: SendMessageBody
 ): Promise<SendResult> {
   try {
     const result = await makeRequest<{ messages: [{ id: string }] }>(config, {
@@ -72,6 +79,18 @@ async function sendMessage<T>(
     }
   } catch (error) {
     if (error instanceof WhatsAppError) {
+      const errorContext: ErrorContext = {
+        code: error.code,
+        message: error.message,
+        recipient: body.to,
+        messageType: body.type,
+      }
+
+      // Call onError callback if provided
+      if (config.onError) {
+        await Promise.resolve(config.onError(errorContext))
+      }
+
       return {
         messageId: '',
         success: false,

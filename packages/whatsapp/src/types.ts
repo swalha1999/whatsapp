@@ -140,12 +140,21 @@ export interface StatusError {
   message?: string
 }
 
+// Error context for onError callback
+export interface ErrorContext {
+  code: number
+  message: string
+  recipient?: string
+  messageType?: string
+}
+
 // Client configuration
 export interface WhatsAppConfig {
   apiToken: string
   phoneNumberId: string
   apiVersion?: string // defaults to 'v22.0'
   baseUrl?: string // defaults to 'https://graph.facebook.com'
+  onError?: (error: ErrorContext) => void | Promise<void>
 }
 
 // Send message types
