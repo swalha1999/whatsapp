@@ -1,0 +1,45 @@
+{
+  "name": "@swalha1999/whatsapp-adapter-drizzle",
+  "version": "0.1.0",
+  "description": "Drizzle adapter for @swalha1999/whatsapp message tracking",
+  "author": "swalha1999",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swalha1999/whatsapp.git",
+    "directory": "packages/adapter-drizzle"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": ["dist", "README.md"],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./schema": {
+      "import": "./dist/schema.mjs",
+      "require": "./dist/schema.js",
+      "types": "./dist/schema.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "drizzle-orm": ">=0.30.0"
+  },
+  "devDependencies": {
+    "drizzle-orm": "^0.30.0",
+    "tsdown": "^0.9.5",
+    "typescript": "^5.5.0"
+  },
+  "keywords": ["whatsapp", "drizzle", "adapter", "database"]
+}
