@@ -5,7 +5,11 @@ A lightweight, type-safe WhatsApp Business API client for Node.js.
 ## Features
 
 - Send text messages and template messages
-- Parse incoming webhook payloads
+- Send media: images, videos, audio, documents, stickers
+- Send interactive messages: buttons, lists
+- Send location, reactions, and contact cards
+- Message categories: marketing, utility, authentication, service
+- Parse incoming webhook payloads (text, media, location, reactions, stickers, contacts)
 - Verify webhook subscriptions
 - Fluent template builder API
 - Full TypeScript support
@@ -107,6 +111,156 @@ const result = await whatsapp.sendTemplate({
       ]
     }
   ]
+})
+```
+
+### `whatsapp.sendImage(params)`
+
+Send an image message.
+
+```typescript
+const result = await whatsapp.sendImage({
+  to: '1234567890',
+  image: { link: 'https://example.com/image.jpg' },
+  // Or use media ID: image: { id: 'media_id' },
+  caption: 'Check this out!',  // optional
+})
+```
+
+### `whatsapp.sendVideo(params)`
+
+Send a video message.
+
+```typescript
+const result = await whatsapp.sendVideo({
+  to: '1234567890',
+  video: { link: 'https://example.com/video.mp4' },
+  caption: 'Watch this!',  // optional
+})
+```
+
+### `whatsapp.sendAudio(params)`
+
+Send an audio message.
+
+```typescript
+const result = await whatsapp.sendAudio({
+  to: '1234567890',
+  audio: { link: 'https://example.com/audio.mp3' },
+})
+```
+
+### `whatsapp.sendDocument(params)`
+
+Send a document.
+
+```typescript
+const result = await whatsapp.sendDocument({
+  to: '1234567890',
+  document: { link: 'https://example.com/file.pdf' },
+  filename: 'report.pdf',  // optional
+  caption: 'Here is the report',  // optional
+})
+```
+
+### `whatsapp.sendSticker(params)`
+
+Send a sticker.
+
+```typescript
+const result = await whatsapp.sendSticker({
+  to: '1234567890',
+  sticker: { id: 'sticker_media_id' },
+})
+```
+
+### `whatsapp.sendLocation(params)`
+
+Send a location.
+
+```typescript
+const result = await whatsapp.sendLocation({
+  to: '1234567890',
+  latitude: 37.7749,
+  longitude: -122.4194,
+  name: 'San Francisco',  // optional
+  address: '123 Main St, San Francisco, CA',  // optional
+})
+```
+
+### `whatsapp.sendReaction(params)`
+
+Send a reaction to a message.
+
+```typescript
+const result = await whatsapp.sendReaction({
+  to: '1234567890',
+  messageId: 'wamid.xxx',
+  emoji: '👍',
+})
+```
+
+### `whatsapp.sendContacts(params)`
+
+Send contact cards.
+
+```typescript
+const result = await whatsapp.sendContacts({
+  to: '1234567890',
+  contacts: [
+    {
+      name: { formatted_name: 'John Doe', first_name: 'John', last_name: 'Doe' },
+      phones: [{ phone: '+1234567890', type: 'CELL' }],
+    },
+  ],
+})
+```
+
+### `whatsapp.sendInteractiveButtons(params)`
+
+Send an interactive button message.
+
+```typescript
+const result = await whatsapp.sendInteractiveButtons({
+  to: '1234567890',
+  body: 'Please choose an option:',
+  buttons: [
+    { id: 'yes', title: 'Yes' },
+    { id: 'no', title: 'No' },
+    { id: 'maybe', title: 'Maybe' },
+  ],
+  header: 'Confirmation',  // optional
+  footer: 'Reply within 24 hours',  // optional
+})
+```
+
+### `whatsapp.sendInteractiveList(params)`
+
+Send an interactive list message.
+
+```typescript
+const result = await whatsapp.sendInteractiveList({
+  to: '1234567890',
+  body: 'Select a product:',
+  buttonText: 'View Products',
+  sections: [
+    {
+      title: 'Electronics',
+      rows: [
+        { id: 'phone', title: 'Smartphone', description: 'Latest model' },
+        { id: 'laptop', title: 'Laptop', description: 'High performance' },
+      ],
+    },
+    {
+      title: 'Accessories',
+      rows: [
+        { id: 'case', title: 'Phone Case' },
+        { id: 'charger', title: 'Fast Charger' },
+      ],
+    },
+  ],
+  header: 'Our Products',  // optional
+  footer: 'Prices may vary',  // optional
 })
 ```
 
@@ -223,6 +377,18 @@ app.post('/webhook', (req, res) => {
         case 'location':
           console.log(`Location: ${content.latitude}, ${content.longitude}`)
           break
+
+        case 'sticker':
+          console.log(`Sticker: ${content.stickerId}`)
+          break
+
+        case 'reaction':
+          console.log(`Reaction: ${content.emoji} to ${content.messageId}`)
+          break
+
+        case 'contacts':
+          console.log(`Contacts: ${content.contacts.map(c => c.formattedName).join(', ')}`)
+          break
       }
     }
 
@@ -251,10 +417,20 @@ app.post('/webhook', (req, res) => {
 type MessageContent =
   | { type: 'text'; body: string }
   | { type: 'button'; payload: string; text: string }
-  | { type: 'interactive'; replyId: string; replyTitle: string }
-  | { type: 'media'; mediaId: string; mimeType: string; caption?: string }
-  | { type: 'location'; latitude: number; longitude: number }
+  | { type: 'interactive'; replyId: string; replyTitle: string; replyDescription?: string }
+  | { type: 'media'; mediaType: 'image' | 'video' | 'audio' | 'document'; mediaId: string; mimeType: string; caption?: string; filename?: string }
+  | { type: 'location'; latitude: number; longitude: number; name?: string; address?: string }
+  | { type: 'sticker'; stickerId: string; mimeType: string; animated?: boolean }
+  | { type: 'reaction'; emoji: string; messageId: string }
+  | { type: 'contacts'; contacts: ParsedContactCard[] }
   | { type: 'unknown' }
+
+interface ParsedContactCard {
+  formattedName: string
+  firstName?: string
+  lastName?: string
+  phones?: Array<{ phone: string; type?: string }>
+}
 ```
 
 ### Status Types
@@ -271,6 +447,12 @@ interface ParsedWebhook {
   phoneNumberId: string
   message?: ParsedMessage
   status?: ParsedStatus
+  contact?: ParsedContact  // Contact info for incoming messages
+}
+
+interface ParsedContact {
+  name: string    // Profile name
+  waId: string    // WhatsApp ID
 }
 
 interface ParsedMessage {
@@ -287,6 +469,15 @@ interface ParsedStatus {
   recipientId: string
   timestamp: Date
   error?: { code: number; message: string }
+  conversation?: {
+    id: string
+    origin: 'user_initiated' | 'business_initiated' | 'referral_conversion'
+    expiresAt?: Date
+  }
+  pricing?: {
+    billable: boolean
+    category: string
+  }
 }
 ```
 

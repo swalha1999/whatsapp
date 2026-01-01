@@ -45,6 +45,27 @@ if (result.success) {
 } else {
   console.error('Failed:', result.error)
 }
+
+// Send media
+await whatsapp.sendImage({ to: '1234567890', image: { link: 'https://...' }, caption: 'Check this out!' })
+await whatsapp.sendVideo({ to: '1234567890', video: { link: 'https://...' } })
+await whatsapp.sendDocument({ to: '1234567890', document: { link: 'https://...' }, filename: 'report.pdf' })
+
+// Send interactive buttons
+await whatsapp.sendInteractiveButtons({
+  to: '1234567890',
+  body: 'Please confirm:',
+  buttons: [
+    { id: 'yes', title: 'Yes' },
+    { id: 'no', title: 'No' },
+  ],
+})
+
+// Send location
+await whatsapp.sendLocation({ to: '1234567890', latitude: 37.7749, longitude: -122.4194, name: 'San Francisco' })
+
+// Send reaction
+await whatsapp.sendReaction({ to: '1234567890', messageId: 'wamid.xxx', emoji: '👍' })
 ```
 
 ### Send Template Messages

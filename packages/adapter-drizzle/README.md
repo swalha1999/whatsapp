@@ -6,6 +6,12 @@ Drizzle ORM adapter for tracking WhatsApp messages in PostgreSQL.
 
 - Track both **incoming** and **outgoing** messages
 - Store message content, media, and metadata
+- Message categories: marketing, utility, authentication, service
+- Track contact info (name, WhatsApp ID)
+- Track location data, reactions, stickers
+- Interactive message data (buttons, lists)
+- Error tracking with code and message
+- Conversation tracking (ID, origin, expiration)
 - Track delivery status using timestamps (null = not happened)
 - Track user responses (approved/declined for RSVP-style templates)
 - Query conversation history by phone number
@@ -43,6 +49,7 @@ import {
   integer,
   index,
   text,
+  boolean,
 } from 'drizzle-orm/pg-core'
 
 export const whatsappMessages = pgTable(
@@ -56,8 +63,11 @@ export const whatsappMessages = pgTable(
     // Message direction: 'incoming' or 'outgoing'
     direction: varchar('direction', { length: 10 }).$type<'incoming' | 'outgoing'>(),
 
+    // Message category for outgoing (marketing, utility, authentication, service)
+    category: varchar('category', { length: 20 }).$type<'marketing' | 'utility' | 'authentication' | 'service'>(),
+
     // Message content
-    messageType: varchar('message_type', { length: 20 }), // text, image, audio, video, document, location, button, interactive
+    messageType: varchar('message_type', { length: 20 }), // text, image, audio, video, document, location, button, interactive, sticker, reaction, contacts
     messageContent: text('message_content'),
     mediaId: varchar('media_id', { length: 255 }),
     mediaUrl: varchar('media_url', { length: 1000 }),
@@ -69,6 +79,37 @@ export const whatsappMessages = pgTable(
     // For incoming interactive/button replies
     replyToMessageId: varchar('reply_to_message_id', { length: 255 }),
     buttonPayload: varchar('button_payload', { length: 255 }),
+
+    // Contact info (from incoming messages)
+    contactName: varchar('contact_name', { length: 255 }),
+    contactWaId: varchar('contact_wa_id', { length: 20 }),
+
+    // Location details
+    locationLatitude: varchar('location_latitude', { length: 20 }),
+    locationLongitude: varchar('location_longitude', { length: 20 }),
+    locationName: varchar('location_name', { length: 255 }),
+    locationAddress: text('location_address'),
+
+    // Interactive message details (for outgoing)
+    interactiveType: varchar('interactive_type', { length: 20 }), // button, list
+    interactiveData: text('interactive_data'), // JSON for buttons/list items
+
+    // Error tracking
+    errorCode: integer('error_code'),
+    errorMessage: text('error_message'),
+
+    // Conversation tracking
+    conversationId: varchar('conversation_id', { length: 255 }),
+    conversationOrigin: varchar('conversation_origin', { length: 20 }).$type<'user_initiated' | 'business_initiated' | 'referral_conversion'>(),
+    conversationExpiresAt: timestamp('conversation_expires_at'),
+
+    // Reaction (for incoming reaction messages)
+    reaction: varchar('reaction', { length: 10 }),
+    reactedToMessageId: varchar('reacted_to_message_id', { length: 255 }),
+
+    // Sticker
+    stickerId: varchar('sticker_id', { length: 255 }),
+    stickerAnimated: boolean('sticker_animated'),
 
     // Status timestamps for outgoing messages (null = not happened, set = happened)
     sentAt: timestamp('sent_at'),
@@ -92,6 +133,8 @@ export const whatsappMessages = pgTable(
     contactIdIdx: index('contact_id_idx').on(table.contactId),
     phoneIdx: index('phone_idx').on(table.phone),
     directionIdx: index('direction_idx').on(table.direction),
+    categoryIdx: index('category_idx').on(table.category),
+    conversationIdIdx: index('conversation_id_idx').on(table.conversationId),
   })
 )
 
@@ -134,6 +177,13 @@ const message = await adapter.saveOutgoingMessage({
   mediaId: 'media_id',              // optional, for media messages
   mediaUrl: 'https://...',          // optional
   mediaMimeType: 'image/jpeg',      // optional
+
+  // Message category (for templates)
+  category: 'marketing',            // optional: 'marketing' | 'utility' | 'authentication' | 'service'
+
+  // Interactive message data
+  interactiveType: 'button',        // optional: 'button' | 'list'
+  interactiveData: JSON.stringify({ buttons: [...] }),  // optional
 })
 
 // Returns: { direction: 'outgoing', sentAt: Date, ... }
@@ -154,6 +204,24 @@ const message = await adapter.saveIncomingMessage({
   mediaMimeType: 'image/jpeg',      // optional
   replyToMessageId: 'wamid.yyy',    // optional, if replying to a message
   buttonPayload: 'confirm',         // optional, for button/interactive replies
+
+  // Contact info (from webhook)
+  contactName: 'John Doe',          // optional
+  contactWaId: '1234567890',        // optional
+
+  // Location (for location messages)
+  locationLatitude: '37.7749',      // optional
+  locationLongitude: '-122.4194',   // optional
+  locationName: 'San Francisco',    // optional
+  locationAddress: '123 Main St',   // optional
+
+  // Reaction (for reaction messages)
+  reaction: '👍',                    // optional
+  reactedToMessageId: 'wamid.zzz',  // optional
+
+  // Sticker
+  stickerId: 'sticker_media_id',    // optional
+  stickerAnimated: false,           // optional
 })
 
 // Returns: { direction: 'incoming', receivedAt: Date, ... }
@@ -202,6 +270,27 @@ Update user response for RSVP-style messages.
 ```typescript
 await adapter.updateResponse('wamid.xxx', 'approved')
 await adapter.updateResponse('wamid.xxx', 'declined')
+```
+
+### `adapter.updateError(messageId, code, message)`
+
+Store error details when a message fails.
+
+```typescript
+await adapter.updateError('wamid.xxx', 131047, 'Re-engagement message required')
+```
+
+### `adapter.updateConversation(messageId, conversationId, origin, expiresAt?)`
+
+Track conversation details from status updates.
+
+```typescript
+await adapter.updateConversation(
+  'wamid.xxx',
+  'conv_123',
+  'user_initiated',
+  new Date('2024-12-20T10:00:00Z')  // optional
+)
 ```
 
 ---
@@ -297,7 +386,8 @@ async function getConversation(phone: string) {
 | `contactId` | INTEGER | Optional contact reference |
 | `phone` | VARCHAR(20) | Phone number |
 | `direction` | VARCHAR(10) | `'incoming'` or `'outgoing'` |
-| `messageType` | VARCHAR(20) | text, image, audio, video, etc. |
+| `category` | VARCHAR(20) | Message category: marketing, utility, authentication, service |
+| `messageType` | VARCHAR(20) | text, image, audio, video, sticker, reaction, contacts, etc. |
 | `messageContent` | TEXT | Message text content |
 | `mediaId` | VARCHAR(255) | WhatsApp media ID |
 | `mediaUrl` | VARCHAR(1000) | Media URL (for outgoing) |
@@ -305,6 +395,23 @@ async function getConversation(phone: string) {
 | `templateName` | VARCHAR(100) | Template name (outgoing) |
 | `replyToMessageId` | VARCHAR(255) | Original message ID (for replies) |
 | `buttonPayload` | VARCHAR(255) | Button/interactive payload |
+| `contactName` | VARCHAR(255) | Sender's profile name (incoming) |
+| `contactWaId` | VARCHAR(20) | Sender's WhatsApp ID (incoming) |
+| `locationLatitude` | VARCHAR(20) | Location latitude |
+| `locationLongitude` | VARCHAR(20) | Location longitude |
+| `locationName` | VARCHAR(255) | Location name |
+| `locationAddress` | TEXT | Location address |
+| `interactiveType` | VARCHAR(20) | Interactive type: button, list |
+| `interactiveData` | TEXT | JSON data for interactive messages |
+| `errorCode` | INTEGER | Error code (when failed) |
+| `errorMessage` | TEXT | Error message (when failed) |
+| `conversationId` | VARCHAR(255) | WhatsApp conversation ID |
+| `conversationOrigin` | VARCHAR(20) | Conversation origin |
+| `conversationExpiresAt` | TIMESTAMP | Conversation expiration |
+| `reaction` | VARCHAR(10) | Reaction emoji |
+| `reactedToMessageId` | VARCHAR(255) | Message ID being reacted to |
+| `stickerId` | VARCHAR(255) | Sticker media ID |
+| `stickerAnimated` | BOOLEAN | Whether sticker is animated |
 | `sentAt` | TIMESTAMP | When sent (outgoing) |
 | `deliveredAt` | TIMESTAMP | When delivered (outgoing) |
 | `readAt` | TIMESTAMP | When read (outgoing) |
@@ -321,6 +428,8 @@ async function getConversation(phone: string) {
 - `contact_id_idx` - Fast lookup by contact ID
 - `phone_idx` - Fast lookup by phone number
 - `direction_idx` - Filter by incoming/outgoing
+- `category_idx` - Filter by message category
+- `conversation_id_idx` - Fast lookup by conversation ID
 
 ---
 
