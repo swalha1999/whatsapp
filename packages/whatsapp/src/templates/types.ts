@@ -5,5 +5,6 @@ export interface TemplateBuilder {
   addTextHeader(text: string): TemplateBuilder
   addBodyParam(text: string): TemplateBuilder
   addQuickReplyButton(index: number, payload: string): TemplateBuilder
+  addUrlButton(index: number, dynamicSuffix: string): TemplateBuilder
   build(): TemplateComponent[]
 }

@@ -38,7 +38,7 @@ export { createTemplateBuilder } from './templates'
 export type { TemplateBuilder } from './templates'
 
 // Webhook utilities (also available as separate import)
-export { parseWebhookPayload, verifyWebhook } from './webhook'
+export { parseWebhookPayload, verifyWebhook, verifyWebhookSignature } from './webhook'
 export type {
   ParsedWebhook,
   ParsedMessage,
@@ -48,3 +48,7 @@ export type {
   MessageContent,
   WebhookVerifyParams,
 } from './webhook'
+
+// Batch utility
+export { batchSend } from './batch'
+export type { BatchOptions, BatchResult } from './batch'

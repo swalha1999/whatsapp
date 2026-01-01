@@ -314,7 +314,21 @@ await whatsapp.sendTemplate({
 | `addTextHeader(text)` | Add text header |
 | `addBodyParam(text)` | Add body parameter |
 | `addQuickReplyButton(index, payload)` | Add quick reply button |
+| `addUrlButton(index, dynamicSuffix)` | Add URL button with dynamic suffix |
 | `build()` | Build and return components array |
+
+### URL Buttons Example
+
+For templates with URL buttons that have dynamic suffixes:
+
+```typescript
+const components = createTemplateBuilder()
+  .addHeader('image', 'https://example.com/image.jpg')
+  .addBodyParam('John')
+  .addQuickReplyButton(0, 'rsvp_yes')
+  .addUrlButton(1, 'https://instagram.com/user')
+  .build()
+```
 
 ---
 
@@ -342,6 +356,27 @@ app.get('/webhook', (req, res) => {
     res.sendStatus(403)
   }
 })
+```
+
+### Verify Webhook Signature (HMAC-SHA256)
+
+For enhanced security, verify the webhook signature using your app secret:
+
+```typescript
+import { verifyWebhookSignature, parseWebhookPayload } from '@swalha1999/whatsapp'
+
+export async function POST(request: Request) {
+  const signature = request.headers.get('x-hub-signature-256') || ''
+  const rawBody = await request.text()
+
+  if (!verifyWebhookSignature(rawBody, signature, process.env.APP_SECRET!)) {
+    return new Response('Invalid signature', { status: 401 })
+  }
+
+  const payload = JSON.parse(rawBody)
+  const events = parseWebhookPayload(payload)
+  // ... handle events
+}
 ```
 
 ### Parse Incoming Messages
@@ -503,6 +538,57 @@ if (!result.success) {
   // 131051 - Invalid recipient
   // 132000 - Template not found
   // 100    - Invalid parameter
+}
+```
+
+---
+
+## Batch Sending
+
+Send messages in batches with automatic delays to avoid rate limits:
+
+```typescript
+import { createWhatsApp, batchSend, createTemplateBuilder } from '@swalha1999/whatsapp'
+
+const whatsapp = createWhatsApp({
+  apiToken: process.env.WHATSAPP_TOKEN!,
+  phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID!,
+})
+
+const contacts = [
+  { phone: '1234567890', name: 'John' },
+  { phone: '0987654321', name: 'Jane' },
+  // ... more contacts
+]
+
+const result = await batchSend(
+  contacts,
+  (contact) => whatsapp.sendTemplate({
+    to: contact.phone,
+    templateName: 'invitation',
+    languageCode: 'en',
+    components: createTemplateBuilder().addBodyParam(contact.name).build(),
+  }),
+  {
+    batchSize: 70,           // Send 70 messages per batch (default: 50)
+    delayMs: 1000,           // Wait 1 second between batches (default: 1000)
+    onProgress: (done, total) => console.log(`Progress: ${done}/${total}`),
+    onError: (error, contact, index) => console.error(`Failed for ${contact.phone}`),
+  }
+)
+
+console.log(`Sent ${result.successful}/${result.total} messages`)
+console.log(`Failed: ${result.failed}`)
+```
+
+### BatchResult
+
+```typescript
+interface BatchResult {
+  total: number        // Total items processed
+  successful: number   // Successfully sent
+  failed: number       // Failed to send
+  results: SendResult[]  // All results
 }
 ```
 

@@ -37,6 +37,16 @@ export function createTemplateBuilder(): TemplateBuilder {
       return this
     },
 
+    addUrlButton(index, dynamicSuffix) {
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index,
+        parameters: [{ type: 'text', text: dynamicSuffix }],
+      })
+      return this
+    },
+
     build() {
       const result = [...components]
       if (bodyParams.length > 0) {
