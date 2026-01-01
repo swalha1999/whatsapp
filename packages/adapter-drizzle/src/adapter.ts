@@ -16,6 +16,18 @@ export interface WhatsAppAdapter {
   ): Promise<void>
 }
 
+const statusToColumn = {
+  sent: 'sentAt',
+  delivered: 'deliveredAt',
+  read: 'readAt',
+  failed: 'failedAt',
+} as const
+
+const responseToColumn = {
+  approved: 'approvedAt',
+  declined: 'declinedAt',
+} as const
+
 export function createDrizzleAdapter(
   db: PostgresJsDatabase<Record<string, never>>
 ): WhatsAppAdapter {
@@ -38,26 +50,22 @@ export function createDrizzleAdapter(
     },
 
     async updateStatus(messageId, status) {
-      const updates: Partial<WhatsAppMessage> = {
-        [status]: true,
-        updatedAt: new Date(),
-      }
-
-      if (status === 'sent') updates.sentAt = new Date()
-      if (status === 'delivered') updates.deliveredAt = new Date()
-      if (status === 'read') updates.readAt = new Date()
-
+      const column = statusToColumn[status]
       await db
         .update(whatsappMessages)
-        .set(updates)
+        .set({
+          [column]: new Date(),
+          updatedAt: new Date(),
+        })
         .where(eq(whatsappMessages.messageId, messageId))
     },
 
     async updateResponse(messageId, response) {
+      const column = responseToColumn[response]
       await db
         .update(whatsappMessages)
         .set({
-          [response]: true,
+          [column]: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(whatsappMessages.messageId, messageId))
