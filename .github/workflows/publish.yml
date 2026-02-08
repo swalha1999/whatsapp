@@ -28,4 +28,4 @@ jobs:
 
       - run: pnpm build
 
-      - run: pnpm -r publish --access public --no-git-checks
+      - run: pnpm --filter @swalha1999/whatsapp publish --access public --no-git-checks
