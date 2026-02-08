@@ -27,4 +27,5 @@ jobs:
 
       - run: pnpm build
 
-      - run: pnpm --filter @swalha1999/whatsapp publish --access public --no-git-checks
+      - run: npm publish --access public
+        working-directory: packages/whatsapp
