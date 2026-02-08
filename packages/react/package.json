@@ -1,6 +1,6 @@
 {
   "name": "@swalha1999/whatsapp-react",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "React components for rendering WhatsApp Business API template message previews",
   "author": "swalha1999",
   "license": "MIT",
