@@ -1,0 +1,52 @@
+{
+  "name": "@swalha1999/whatsapp-react",
+  "version": "0.1.4",
+  "description": "React components for rendering WhatsApp Business API template message previews",
+  "author": "swalha1999",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/swalha1999/whatsapp.git",
+    "directory": "packages/react"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "tsdown": "^0.9.5",
+    "typescript": "^5.5.0"
+  },
+  "keywords": [
+    "whatsapp",
+    "react",
+    "template",
+    "preview",
+    "component"
+  ]
+}
