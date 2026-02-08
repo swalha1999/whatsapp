@@ -34,6 +34,11 @@
       "import": "./dist/templates.mjs",
       "require": "./dist/templates.js",
       "types": "./dist/templates.d.ts"
+    },
+    "./react": {
+      "import": "./dist/react.mjs",
+      "require": "./dist/react.js",
+      "types": "./dist/react.d.ts"
     }
   },
   "scripts": {
@@ -43,8 +48,19 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
     "tsdown": "^0.9.5",
     "typescript": "^5.5.0",
     "vitest": "^2.0.0"
