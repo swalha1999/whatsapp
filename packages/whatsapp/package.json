@@ -1,6 +1,6 @@
 {
   "name": "@swalha1999/whatsapp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "WhatsApp Business API client for Node.js",
   "author": "swalha1999",
   "license": "MIT",

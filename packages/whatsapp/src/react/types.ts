@@ -64,8 +64,6 @@ export interface WhatsAppTemplateProps {
   language?: string
   /** Override text direction (auto-detected from language if not set) */
   direction?: 'ltr' | 'rtl'
-  /** Show WhatsApp wallpaper background (default: true) */
-  showWallpaper?: boolean
   /** Container width (default: 380) */
   width?: number | string
   /** Additional CSS class on the outer container */

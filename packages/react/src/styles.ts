@@ -2,10 +2,6 @@ import type { CSSProperties } from 'react'
 
 // WhatsApp color palette
 export const colors = {
-  wallpaper: '#e5ddd5',
-  bubbleOutgoing: '#dcf8c6',
-  bubbleIncoming: '#ffffff',
-  bubbleShadow: 'rgba(0, 0, 0, 0.13)',
   textPrimary: '#111b21',
   textSecondary: '#667781',
   footerText: '#8696a0',
@@ -15,7 +11,6 @@ export const colors = {
   buttonBackground: '#ffffff',
   headerBackground: '#e2e2e2',
   documentIcon: '#667781',
-  tailColor: '#ffffff',
 } as const
 
 // Typography
@@ -37,7 +32,6 @@ export const spacing = {
   bodyPaddingVertical: 6,
   footerPadding: 9,
   buttonGap: 4,
-  bubbleRadius: 8,
   headerImageRadius: '8px 8px 0 0',
 } as const
 
@@ -70,25 +64,6 @@ export function substituteVariables(
     return variables[key] !== undefined ? variables[key] : match
   })
 }
-
-// Wallpaper SVG data URI — subtle doodle pattern
-export const wallpaperPatternUri = `data:image/svg+xml,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" opacity="0.06">
-    <circle cx="20" cy="20" r="2" fill="#888"/>
-    <circle cx="100" cy="50" r="1.5" fill="#888"/>
-    <circle cx="200" cy="30" r="2" fill="#888"/>
-    <circle cx="280" cy="80" r="1.5" fill="#888"/>
-    <circle cx="50" cy="120" r="2" fill="#888"/>
-    <circle cx="150" cy="100" r="1.5" fill="#888"/>
-    <circle cx="250" cy="140" r="2" fill="#888"/>
-    <circle cx="30" cy="200" r="1.5" fill="#888"/>
-    <circle cx="130" cy="180" r="2" fill="#888"/>
-    <circle cx="220" cy="220" r="1.5" fill="#888"/>
-    <circle cx="80" cy="270" r="2" fill="#888"/>
-    <circle cx="180" cy="260" r="1.5" fill="#888"/>
-    <circle cx="270" cy="280" r="2" fill="#888"/>
-  </svg>`,
-)}`
 
 // Common style helpers
 export function containerStyle(width: number | string): CSSProperties {
