@@ -52,7 +52,7 @@ export function parseWebhookPayload(payload: WebhookPayload): ParsedWebhook[] {
 
 function parseContact(contact: Contact): ParsedContact {
   return {
-    name: contact.profile.name,
+    name: contact.profile?.name ?? '',
     waId: contact.wa_id,
   }
 }
@@ -172,9 +172,9 @@ function parseMessageContent(msg: IncomingMessage): MessageContent {
     return {
       type: 'contacts',
       contacts: msg.contacts.map((c): ParsedContactCard => ({
-        formattedName: c.name.formatted_name,
-        firstName: c.name.first_name,
-        lastName: c.name.last_name,
+        formattedName: c.name?.formatted_name ?? '',
+        firstName: c.name?.first_name,
+        lastName: c.name?.last_name,
         phones: c.phones,
       })),
     }

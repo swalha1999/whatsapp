@@ -48,7 +48,7 @@ export interface Metadata {
 }
 
 export interface Contact {
-  profile: { name: string }
+  profile?: { name?: string }
   wa_id: string
 }
 
