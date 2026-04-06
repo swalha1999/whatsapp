@@ -266,11 +266,12 @@ export interface TemplateComponent {
 }
 
 export interface TemplateParameter {
-  type: 'text' | 'image' | 'document' | 'video'
+  type: 'text' | 'image' | 'document' | 'video' | 'location'
   text?: string
   image?: { link: string }
   document?: { link: string; filename?: string }
   video?: { link: string }
+  location?: { latitude: number; longitude: number; name?: string; address?: string }
 }
 
 export interface SendResult {

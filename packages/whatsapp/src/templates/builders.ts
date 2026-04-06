@@ -14,6 +14,14 @@ export function createTemplateBuilder(): TemplateBuilder {
       return this
     },
 
+    addLocationHeader(location) {
+      components.push({
+        type: 'header',
+        parameters: [{ type: 'location', location } as TemplateParameter],
+      })
+      return this
+    },
+
     addTextHeader(text) {
       components.push({
         type: 'header',
