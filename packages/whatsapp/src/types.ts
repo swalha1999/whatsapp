@@ -271,7 +271,7 @@ export interface TemplateParameter {
   image?: { link: string }
   document?: { link: string; filename?: string }
   video?: { link: string }
-  location?: { latitude: number; longitude: number; name?: string; address?: string }
+  location?: { latitude: string; longitude: string; name: string; address: string }
 }
 
 export interface SendResult {

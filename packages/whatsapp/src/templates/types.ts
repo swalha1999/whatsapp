@@ -6,8 +6,8 @@ export interface TemplateBuilder {
   addLocationHeader(location: {
     latitude: number
     longitude: number
-    name?: string
-    address?: string
+    name: string
+    address: string
   }): TemplateBuilder
   addBodyParam(text: string): TemplateBuilder
   addQuickReplyButton(index: number, payload: string): TemplateBuilder

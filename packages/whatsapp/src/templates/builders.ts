@@ -17,7 +17,17 @@ export function createTemplateBuilder(): TemplateBuilder {
     addLocationHeader(location) {
       components.push({
         type: 'header',
-        parameters: [{ type: 'location', location } as TemplateParameter],
+        parameters: [
+          {
+            type: 'location',
+            location: {
+              latitude: String(location.latitude),
+              longitude: String(location.longitude),
+              name: location.name,
+              address: location.address,
+            },
+          } as TemplateParameter,
+        ],
       })
       return this
     },
