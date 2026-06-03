@@ -282,3 +282,48 @@ export interface SendResult {
     message: string
   }
 }
+
+// Media download / upload
+
+// Metadata returned by the Graph API for a media id.
+export interface MediaInfo {
+  id: string
+  url: string
+  mimeType: string
+  fileSize: number
+  sha256: string
+}
+
+export interface DownloadMediaResult {
+  success: boolean
+  // Raw bytes of the media. Wrap with Buffer.from(data) in Node, or build a
+  // Blob/base64 as needed.
+  data?: ArrayBuffer
+  mimeType?: string
+  fileSize?: number
+  sha256?: string
+  error?: {
+    code: number
+    message: string
+  }
+}
+
+export interface UploadMediaParams {
+  // The media bytes. A Blob is used directly; a Uint8Array/ArrayBuffer is
+  // wrapped in a Blob with the given `type`.
+  file: Blob | Uint8Array | ArrayBuffer
+  // MIME type, e.g. 'image/jpeg', 'application/pdf'.
+  type: string
+  // Optional filename for the upload part.
+  filename?: string
+}
+
+export interface UploadMediaResult {
+  success: boolean
+  // The media id to pass as { id } to sendImage/sendDocument/etc.
+  mediaId?: string
+  error?: {
+    code: number
+    message: string
+  }
+}

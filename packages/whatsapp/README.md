@@ -174,6 +174,36 @@ const result = await whatsapp.sendSticker({
 })
 ```
 
+### `whatsapp.downloadMedia(mediaId)`
+
+Download inbound media. Webhooks only carry a media **id**, so retrieval is two
+steps (resolve the temporary URL, then fetch the bytes) — this does both, with
+the bearer token attached to each request.
+
+```typescript
+const result = await whatsapp.downloadMedia('MEDIA_ID')
+if (result.success) {
+  const buffer = Buffer.from(result.data!)  // raw bytes
+  console.log(result.mimeType, result.fileSize) // 'image/jpeg', 12345
+}
+```
+
+### `whatsapp.uploadMedia(params)`
+
+Upload media and get a reusable media id to send via the `{ id }` variant of
+`sendImage` / `sendDocument` / etc.
+
+```typescript
+const uploaded = await whatsapp.uploadMedia({
+  file: buffer,            // Blob | Uint8Array | ArrayBuffer
+  type: 'image/jpeg',
+  filename: 'photo.jpg',   // optional
+})
+if (uploaded.success) {
+  await whatsapp.sendImage({ to: '1234567890', image: { id: uploaded.mediaId! } })
+}
+```
+
 ### `whatsapp.sendLocation(params)`
 
 Send a location.

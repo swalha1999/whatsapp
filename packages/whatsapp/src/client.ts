@@ -14,6 +14,9 @@ import type {
   SendInteractiveListParams,
   SendResult,
   ErrorContext,
+  DownloadMediaResult,
+  UploadMediaParams,
+  UploadMediaResult,
 } from './types'
 
 export interface ResolvedConfig extends WhatsAppConfig {
@@ -23,6 +26,14 @@ export interface ResolvedConfig extends WhatsAppConfig {
 
 function getApiUrl(config: ResolvedConfig): string {
   return `${config.baseUrl}/${config.apiVersion}/${config.phoneNumberId}/messages`
+}
+
+function getMediaUrl(config: ResolvedConfig, mediaId: string): string {
+  return `${config.baseUrl}/${config.apiVersion}/${mediaId}`
+}
+
+function getMediaUploadUrl(config: ResolvedConfig): string {
+  return `${config.baseUrl}/${config.apiVersion}/${config.phoneNumberId}/media`
 }
 
 async function makeRequest<T>(config: ResolvedConfig, body: object): Promise<T> {
@@ -307,5 +318,112 @@ export async function markAsRead(
     return true
   } catch {
     return false
+  }
+}
+
+// Download inbound media by id. WhatsApp webhooks only carry a media id, so
+// retrieval is two steps: resolve the temporary download URL + metadata, then
+// fetch the bytes (both require the bearer token).
+export async function downloadMedia(
+  config: ResolvedConfig,
+  mediaId: string
+): Promise<DownloadMediaResult> {
+  try {
+    const infoResponse = await fetch(getMediaUrl(config, mediaId), {
+      headers: { Authorization: `Bearer ${config.apiToken}` },
+    })
+    if (!infoResponse.ok) {
+      const error = await infoResponse.json().catch(() => ({}))
+      throw new WhatsAppError(
+        error.error?.message || 'Failed to resolve media',
+        error.error?.code || infoResponse.status
+      )
+    }
+    const info = (await infoResponse.json()) as {
+      url: string
+      mime_type: string
+      file_size: number
+      sha256: string
+      id: string
+    }
+
+    const mediaResponse = await fetch(info.url, {
+      headers: { Authorization: `Bearer ${config.apiToken}` },
+    })
+    if (!mediaResponse.ok) {
+      throw new WhatsAppError(
+        `Failed to download media (${mediaResponse.status})`,
+        mediaResponse.status
+      )
+    }
+    const data = await mediaResponse.arrayBuffer()
+
+    return {
+      success: true,
+      data,
+      mimeType: info.mime_type,
+      fileSize: info.file_size,
+      sha256: info.sha256,
+    }
+  } catch (error) {
+    if (error instanceof WhatsAppError) {
+      if (config.onError) {
+        await Promise.resolve(
+          config.onError({ code: error.code, message: error.message })
+        )
+      }
+      return {
+        success: false,
+        error: { code: error.code, message: error.message },
+      }
+    }
+    throw error
+  }
+}
+
+// Upload media to WhatsApp and get a reusable media id, which can be sent via
+// the { id } variant of sendImage/sendDocument/sendVideo/etc.
+export async function uploadMedia(
+  config: ResolvedConfig,
+  params: UploadMediaParams
+): Promise<UploadMediaResult> {
+  try {
+    const blob =
+      params.file instanceof Blob
+        ? params.file
+        : new Blob([params.file as BlobPart], { type: params.type })
+
+    const form = new FormData()
+    form.append('messaging_product', 'whatsapp')
+    form.append('type', params.type)
+    form.append('file', blob, params.filename ?? 'file')
+
+    const response = await fetch(getMediaUploadUrl(config), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${config.apiToken}` },
+      body: form,
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new WhatsAppError(
+        error.error?.message || 'Failed to upload media',
+        error.error?.code || response.status
+      )
+    }
+    const result = (await response.json()) as { id: string }
+    return { success: true, mediaId: result.id }
+  } catch (error) {
+    if (error instanceof WhatsAppError) {
+      if (config.onError) {
+        await Promise.resolve(
+          config.onError({ code: error.code, message: error.message })
+        )
+      }
+      return {
+        success: false,
+        error: { code: error.code, message: error.message },
+      }
+    }
+    throw error
   }
 }

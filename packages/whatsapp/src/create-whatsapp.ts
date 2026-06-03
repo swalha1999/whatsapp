@@ -13,6 +13,9 @@ import type {
   SendInteractiveButtonsParams,
   SendInteractiveListParams,
   SendResult,
+  DownloadMediaResult,
+  UploadMediaParams,
+  UploadMediaResult,
 } from './types'
 import {
   sendText,
@@ -28,6 +31,8 @@ import {
   sendInteractiveButtons,
   sendInteractiveList,
   markAsRead,
+  downloadMedia,
+  uploadMedia,
 } from './client'
 
 export interface WhatsApp {
@@ -52,6 +57,10 @@ export interface WhatsApp {
 
   // Reactions
   sendReaction: (params: SendReactionParams) => Promise<SendResult>
+
+  // Media retrieval
+  downloadMedia: (mediaId: string) => Promise<DownloadMediaResult>
+  uploadMedia: (params: UploadMediaParams) => Promise<UploadMediaResult>
 
   // Utilities
   markAsRead: (messageId: string) => Promise<boolean>
@@ -86,6 +95,10 @@ export function createWhatsApp(config: WhatsAppConfig): WhatsApp {
 
     // Reactions
     sendReaction: (params) => sendReaction(resolvedConfig, params),
+
+    // Media retrieval
+    downloadMedia: (mediaId) => downloadMedia(resolvedConfig, mediaId),
+    uploadMedia: (params) => uploadMedia(resolvedConfig, params),
 
     // Utilities
     markAsRead: (messageId) => markAsRead(resolvedConfig, messageId),
